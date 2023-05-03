@@ -1,0 +1,266 @@
+{% if template contains 'product' %}
+<style>
+.Product__Gallery--stack.Product__Gallery--withThumbnails {
+    display:block !important;
+}
+  .single-option-selector {
+    width:100%;
+  }
+  #rondellCarousel {
+    content-visibility: hidden !important;
+  }
+  #product-switcher li img {
+      height: -webkit-fill-available;
+      object-fit: contain;
+  }
+  .product-form__buy-buttons {
+    width: 100%;
+  }
+  #customify_form select {
+    max-width: 250px;
+    height: 40px;
+    padding: 5px 10px;
+    box-sizing: border-box;
+    margin-bottom: 15px !important;
+  }
+  #customify_form div:empty{display:block !important;}
+  #customify-pcolor li::before, .customify-color li::before, #cst-container li::before {
+    display:none;
+  }
+
+  #productSelect {
+    display: none;
+   }
+</style>
+<script src="https://d2hl1uvd5lolaz.cloudfront.net/cstassets/thirdparty-v2.4.js"></script>
+<script src="https://d2hl1uvd5lolaz.cloudfront.net/cstassets/jscolor.min.js"></script>
+
+<script>
+      const CST_ID = '.medium-up--one-half:eq(0):not(.small--hide), .product-single__photos, .product__media-wrapper, .Product__Gallery--withThumbnails, .product-single__media-group, .product-img-box, .product-galleries,.gallery-control,.product-detail .gallery__inner,.Product__Gallery.Product__Gallery--withDots, .product-gallery.product-gallery--layout-2'
+      const CST_FORM = '.selector-wrapper, .ProductSelect-product-template, .product-form__quantity, .ProductMeta__Description, .item_var_size'
+      const CST_SUBMIT ='button[name="add"], input[name="add"], button[data-action="add-to-cart"], #AddToCart,form[action="/cart/add"] button[type="submit"],.add_to_cart_div input[type="submit"]'
+      let CST_SUBMIT_W = CST_SUBMIT.replace('#','')
+      CST_SUBMIT_W = CST_SUBMIT_W.replace('.','')
+      const CST_SUBMITREMOVE_CLASS = 'add-to-cart btnAddToCart product-form__cart-submit ProductForm__AddToCart js-product-button-add-to-cart'
+      const CST_PRICE = '.product__price, .price-item, .product-price__price, .price-area'
+      const CST_HIDE_EXIST_SELECT = '.variant-wrapper.variant-wrapper--button.js, .product-single__variants, variant-radios, .option-selectors'
+        var product_variant_map = [];
+        {% for variant in product.variants %}
+        product_variant_map[{{ forloop.index | minus: 1 }}] = {{ variant | json }};
+        {% endfor %}
+        var cst_pImages = '{{ product.images | json }}';
+    
+        {% comment %}
+        Place this in your product.liquid template, at the bottom.
+        {% endcomment %}
+        {% if product.variants.size > 1 %} 
+            var variantImages = {},
+            thumbnails,
+            variant,
+            variantImage,
+            optionValue,
+            productOptions = [];
+            {% for variant in product.variants %}
+                variant = {{ variant | json }};
+                if ( typeof variant.featured_image !== 'undefined' && variant.featured_image !== null ) {
+                    variantImage =  variant.featured_image.src.split('?')[0].replace(/http(s)?:/,'');
+                    variantImages[variantImage] = variantImages[variantImage] || {};
+                    {% for option in product.options %}
+                    
+                    {% assign option_value = variant.options[forloop.index0] %}
+                    {% assign option_key = 'option-' | append: forloop.index0 %}
+                    
+                    if (typeof variantImages[variantImage][{{ option_key | json }}] === 'undefined') {
+                        variantImages[variantImage][{{ option_key | json }}] = {{ option_value | json }};
+                    }
+                    else {
+                        var oldValue = variantImages[variantImage][{{ option_key | json }}];
+                        if ( oldValue !== null && oldValue !== {{ option_value | json }} )  {
+                        variantImages[variantImage][{{ option_key | json }}] = null;
+                        }
+                    }
+                    {% endfor %}
+                }
+                productOptions.push(variant);
+            {% endfor %} 
+        {% endif %}
+
+    /* variants price */
+    var product_title = "{{ product.title | escape }}";
+    var product_handle = "{{ product.handle }}";
+    var product_id = "{{ product.id }}"; //test
+    var the_form_box = $("#customify-variant-table");
+    success_div = the_form_box.find(".msg-info");
+    variantPrice = []; //test
+    money_format = "{{ shop.money_format | escape }}";
+    product_variant = "{{ product.variants | escape }}";
+    form_method = "{{ form_method }}";
+    var html_variants = '';
+    {% assign products_by_price = product.variants | sort: "price" %}
+
+    var product_variants = [];
+    {% for variant in products_by_price %}
+        var first_variant = "{{ variant.options.first | escape}}";
+        first_variant = first_variant.replace(" ","_");
+        var new_variant = [];
+        new_variant['id'] = "{{ variant.id }}"
+        new_variant['title'] = "{{ variant.title | escape }}"
+        new_variant['available'] = "{{ variant.available }}"
+        new_variant['price'] = "{{ variant.price | money | escape}}"
+        new_variant['price_no_currency'] = "{{ variant.price }}"
+        new_variant['compare_at_price_no_currency'] = "{{ variant.compare_at_price }}"
+        new_variant['compare_at_price'] = "{{ variant.compare_at_price | money | escape}}"
+        new_variant['options'] = []
+        {% for option in variant.options %}
+            new_variant['options'].push("{{ option | escape}}")
+        {% endfor %}
+        if(typeof product_variants[first_variant] != "undefined"){
+            product_variants[first_variant].push((new_variant))
+        }else{
+            product_variants[first_variant] = [];
+            product_variants[first_variant].push((new_variant))
+        }
+    {% endfor %}
+    
+    {% if shop.money_format contains "amount_with_comma_separator" %}
+        var money_format_type = "comma";
+        {% for variant in product.variants %}variantPrice[{{ variant.id }}] = {{ variant.price   | money_without_currency  | replace: '.',''  | replace: ',','.'  }};{% endfor %}
+    {% else %}
+        var money_format_type = "dot";
+        {% for variant in product.variants %}variantPrice[{{ variant.id }}] = {{ variant.price   | money_without_currency | replace: ',',''  }};{% endfor %}
+    {% endif %}
+
+    {% if customer %}
+    email_to = "{{ shop.email }}";
+    email_from = "{{ customer.email }}";
+    email_from_name = "{{ customer.first_name | escape }}";
+    product_url = "http://{{ shop.domain }}/apps/customify-dev/view/{{ product.handle }}/{{ product.id }}";
+    product_title = "{{ product.title | escape }}";
+    customer_id = "{{customer.email}}";{% endif %}
+</script>
+<script>
+    {% assign orihandle = product.handle | replace: '-customized','' %}var product_ori_id = '{{ all_products[orihandle].id }}';var product_ori_handle = '{{ orihandle }}';var product_detail = {id:'{{ product.id }}',handle:'{{ product.handle }}'};window.jQuery || document.write("<script src='//ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js'>\x3C/script>")
+</script>
+
+<script type="text/javascript">
+
+  document.addEventListener('cstVariantTable', function(){
+  let table =`<div id="customify-variant-table">
+      <input type="file" id="customify-upload" style="display: none" />{{ product_color_grid }}{{ customify_text_widget }}
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" name="id" style="display:block;!important">
+        <tbody>
+          <tr class="{% cycle \'rx\',\'ry\' %}">{% for option in product.options %}
+            <th>{{ option }}</th> {% endfor %}
+            <th scope="col" class="center cst_price_label">Price</th>
+            <th scope="col" style="width: 80px;" class="cst_qty_label textright txtLang">misc.quantity</th>
+          </tr> {% for variant in product.variants %} {% if variant.available %}
+          <tr class="{% cycle \'xx\',\'yy\' %}" id="variant_tr-{{ variant.id }}"> {% for option in product.options %}
+            <td class=\'text\'>{{ variant.options[forloop.index0] }}</td> {% endfor %}
+            <td value="{{ variant.id }}" title="" class="center">{{ variant.price | money }} {% if variant.compare_at_price > variant.price %} <del>{{ variant.compare_at_price | money }}</del>{% endif %}</td>
+            <td> {% if variant.available %}
+              <input data-idx="{{ variant.id }}" class=\'qty_input\' type="text" value="0" name="qty_{{variant.id}}" id="qty_{{ variant.id}}" /> {% else %} Sold {% endif %}</td>
+          </tr> {% endif %} {% endfor %}</tbody>
+      </table>
+      <div class="msg-info" style="display: none; padding: 10px 0px;"></div>
+    </div>`
+    if($('.cst-row').length){
+      $('.cst-row:last').after(table)
+    }else{
+      $(CST_SUBMIT).parents('form').prepend(table)
+    }
+
+    $(CST_HIDE_EXIST_SELECT+',.selector-wrapper').remove()
+
+  })
+  
+  document.addEventListener('cstReady',function(){
+    let currentVariantID = null
+    setTimeout(function(){
+      if($("#customify_form [name='id']").length!=0 && $("#customify_form .selector-wrapper").length == 0  && ($("#customify_form [name='id']").val() == null || typeof $("#customify_form [name='id']").val() == 'undefined' )){
+        let variant_id = $('#customify_form [name="id"] option').val();
+          $('#customify_form [name="id"]').remove()
+          $('#customify_form').append("<input name='id' type='hidden' value='"+variant_id+"' />")
+        }
+      },2000)
+        function getUrlParams(e, n) {
+            n || (n = window.location.href), e = e.replace(/[\[\]]/g, "$&");
+            var r = new RegExp("[?&]" + e + "(=([^&#]*)|&|#|$)"),
+                a = r.exec(n);
+            return a ? a[2] ? decodeURIComponent(a[2].replace(/\+/g, " ")) : "" : null
+        }
+        var variant_id = getUrlParams("variant");
+        $("select[name=\'id\']").val(variant_id);
+        $("#preload-thumbnails").parent().detach().insertAfter("#cst-price");
+
+    function selectTrigger(option0,option1,option2,option3,option4){
+          let title_variant = "";
+          title_variant = option0;
+          if(option1 !== undefined){
+            title_variant += " / "+option1
+          }
+          if(option2 !== undefined){
+            title_variant += " / "+option2
+          }
+          if(option3 !== undefined){
+            title_variant += " / "+option3
+          }
+
+          $('.swapProduct[data-title="'+title_variant+'"]').trigger('click')
+          let variant = productOptions.filter(item=>{return item.title == title_variant})
+
+          if(variant.length !== 0){
+            let findId = $("#customify_form").find("[name='id']")
+            if(findId.length == 0){
+              $("#customify_form").append("<input name='id' type='hidden' value='"+variant[0].id+"' />")
+            }else{
+              $("#customify_form").find("[name='id']").val(variant[0].id)
+            }
+          }
+
+        $("[name='option-0']:eq(0)").click();
+    }
+
+    $("[name^='option-']").on("click",function(){
+          let option0 = $("[name='option-0']:checked").val()
+          let option1 = $("[name='option-1']:checked").val()
+          let option2 = $("[name='option-2']:checked").val()
+          let option3 = $("[name='option-3']:checked").val()
+          selectTrigger(option0,option1,option2,option3)      
+    })
+    $(document).on("change","[id^='SingleOptionSelector-']",function(){
+          // console.log("click")
+          let option0 = $("#SingleOptionSelector-0").val()
+          let option1 = $("#SingleOptionSelector-1").val()
+          let option2 = $("#SingleOptionSelector-2").val()
+          let option3 = $("#SingleOptionSelector-3").val()
+          selectTrigger(option0,option1,option2,option3)      
+    })
+
+    $(document).on("click", 'input[type="radio"], [name^="option"]', function(){
+      setTimeout(function(){
+        var variant_id = getUrlParams("variant");
+        let variant = productOptions.filter(item=>{return item.id == variant_id})
+        if(variant.length>0 && variant_id !== currentVariantID){
+          currentVariantID = variant_id
+          $('.swapProduct[data-title="'+variant[0].title+'"]').trigger('click')
+          let findId = $("#customify_form").find("select[name='id']")
+            if(findId.length == 0){
+              let newId = $("#customify_form").find("input[name='id']")
+              if(newId.length > 0){
+                newId.val(variant_id)
+              }else{
+                $("#customify_form").append("<input name='id' type='hidden' value='"+variant_id+"' />")
+              }
+            }else{
+              findId.remove();
+              $("#customify_form").append("<input name='id' type='hidden' value='"+variant_id+"' />")
+            }
+        }
+      },300)
+    })
+
+})
+
+</script>
+{% capture script_link %}/apps/customify/load_onpage_v3/{{ product.id }}.js{% endcapture %}{{ script_link | script_tag }}
+{% endif %}
